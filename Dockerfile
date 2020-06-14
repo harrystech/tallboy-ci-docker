@@ -7,7 +7,7 @@ FROM ${JDK_BASE_IMAGE}
 ENTRYPOINT ["/bin/bash"]
 
 # Apparently moving these arguments above the "FROM" statement
-# blows away the values. Stupid docker.
+# blows away the values.
 ARG SBT_VERSION=0.13.11
 ARG SCALA_VERSION=2.11.8
 
@@ -27,6 +27,7 @@ RUN apt-get update \
 RUN ["adduser", "--disabled-password", "--gecos", "", "harrys"]
 RUN ["usermod", "-aG", "sudo", "harrys"]
 RUN echo 'harrys ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/harrys
+
 USER harrys
 # Default path is HOME
 WORKDIR /home/harrys
