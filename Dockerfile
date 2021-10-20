@@ -8,7 +8,7 @@ ARG SCALA_VERSION=2.11.8
 ENV SBT_VERSION=${SBT_VERSION}
 ENV SCALA_VERSION=${SCALA_VERSION}
 
-# Override the appengine entrypoint
+# Override the entrypoint
 ENTRYPOINT ["/bin/bash"]
 
 # Install baseline utility packages
@@ -45,13 +45,19 @@ RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(. /
 
 # Create harrys user for running commands non-root
 RUN ["adduser", "--disabled-password", "--gecos", "", "harrys"]
-RUN ["usermod", "-aG", "sudo", "harrys"]
 RUN echo 'harrys ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/harrys
+RUN usermod -aG sudo harrys
 RUN usermod -aG docker harrys
 USER harrys
 
 # Default path is HOME
 WORKDIR /home/harrys
+
+# Install PIP & AWS CLI
+RUN sudo curl -o /tmp/get-pip.py https://bootstrap.pypa.io/pip/3.5/get-pip.py \
+    && python3 /tmp/get-pip.py --user \
+    && echo "PATH=~/.local/bin:$PATH" >> ~/.bash_profile \
+    && /home/harrys/.local/bin/pip install awscli --upgrade --user
 
 # Install SBT
 # https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html#Ubuntu+and+other+Debian-based+distributions
