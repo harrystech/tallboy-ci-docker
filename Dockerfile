@@ -8,6 +8,9 @@ ARG SCALA_VERSION=2.11.8
 ENV SBT_VERSION=${SBT_VERSION}
 ENV SCALA_VERSION=${SCALA_VERSION}
 
+# Override the appengine entrypoint
+ENTRYPOINT ["/bin/bash"]
+
 # Install baseline utility packages
 RUN apt-get update \
     && apt-get install -y --fix-broken \
@@ -74,12 +77,3 @@ RUN mkdir -p /tmp/force-compile/project  \
   && sbt compile \
   && cd ~/ \
   && sudo rm -fR /tmp/*
-
-# Copy code (in order of odds of changing)
-COPY build.sbt ./tallboy/
-COPY project/ ./tallboy/project
-COPY app/ ./tallboy/app
-COPY conf/ ./tallboy/conf
-
-RUN cd /home/harrys/tallboy \
-    && sbt compile
