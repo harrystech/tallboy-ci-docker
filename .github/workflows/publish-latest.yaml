@@ -3,7 +3,6 @@ on:
   push:
     branches:
     - master
-    - update-tallboy-ci-docker
     paths:
     - ".github/workflows/publish_latest.yaml"
 jobs:
