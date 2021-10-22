@@ -1,46 +1,75 @@
 ARG JDK_BASE_IMAGE=openjdk:8u162-jdk
-
-# Pull base image
 FROM ${JDK_BASE_IMAGE}
 
-# Override the appengine entrypoint
-ENTRYPOINT ["/bin/bash"]
-
-# Apparently moving these arguments above the "FROM" statement
-# blows away the values.
-ARG SBT_VERSION=0.13.11
+ARG SBT_VERSION=0.13.18
 ARG SCALA_VERSION=2.11.8
 
 # Export values for sub container use
 ENV SBT_VERSION=${SBT_VERSION}
 ENV SCALA_VERSION=${SCALA_VERSION}
 
+# Override the entrypoint
+ENTRYPOINT ["/bin/bash"]
+
 # Install baseline utility packages
 RUN apt-get update \
     && apt-get install -y --fix-broken \
-    && apt-get install -y --no-install-recommends dirmngr python curl sudo gnupg apt-transport-https git ssh tar gzip lsb-release software-properties-common awscli bc \
+    && apt-get install -y --no-install-recommends \
+        apt-transport-https\
+        awscli\
+        bc \
+        curl\
+        dirmngr \
+        git\
+        gnupg\
+        gzip\
+        lsb-release\
+        python\
+        software-properties-common\
+        ssh\
+        sudo\
+        tar\
     && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker
+RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" \
+    && curl -fsSL -o "docker-key.gpg" "https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg" \
+    && apt-key add "docker-key.gpg" \
+    && rm "docker-key.gpg" \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create harrys user for running commands non-root
 RUN ["adduser", "--disabled-password", "--gecos", "", "harrys"]
-RUN ["usermod", "-aG", "sudo", "harrys"]
 RUN echo 'harrys ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/harrys
-
+RUN usermod -aG sudo harrys
+RUN usermod -aG docker harrys
 USER harrys
+
 # Default path is HOME
 WORKDIR /home/harrys
 
+# Install PIP & AWS CLI
+RUN sudo curl -o /tmp/get-pip.py https://bootstrap.pypa.io/pip/3.5/get-pip.py \
+    && python3 /tmp/get-pip.py --user \
+    && echo "PATH=~/.local/bin:$PATH" >> ~/.bash_profile \
+    && /home/harrys/.local/bin/pip install awscli --upgrade --user
+
 # Install SBT
-RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list \
+# https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html#Ubuntu+and+other+Debian-based+distributions
+RUN    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list \
+    && echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list \
+    && curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add \
     && sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 \
     && sudo apt-get update \
     && sudo apt-get install sbt \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
-# Install sbt
 ENV SBT_HOME=/home/harrys/.sbt
 RUN mkdir -p "$SBT_HOME"
 
@@ -54,22 +83,3 @@ RUN mkdir -p /tmp/force-compile/project  \
   && sbt compile \
   && cd ~/ \
   && sudo rm -fR /tmp/*
-
-# Install Docker
-RUN sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" \
-    && curl -fsSL -o "docker-key.gpg" "https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg" \
-    && sudo apt-key add "docker-key.gpg" \
-    && rm "docker-key.gpg" \
-    && sudo apt-get update \
-    && sudo apt-get install -y --no-install-recommends docker-ce \
-    && sudo apt-get clean \
-    && sudo rm -rf /var/lib/apt/lists/*
-
-# Install PIP & AWS CLI
-RUN sudo curl -O https://bootstrap.pypa.io/get-pip.py \
-    && python3 get-pip.py --user \
-    && echo "PATH=~/.local/bin:$PATH" >> ~/.bash_profile \
-    && /home/harrys/.local/bin/pip install awscli --upgrade --user
-
-# Add harrys user to the docker group
-RUN sudo usermod -aG docker harrys
