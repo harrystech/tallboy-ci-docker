@@ -1,23 +1,19 @@
-name: Publish Docker image
-on:
-  push:
-    branches:
-    - master
-    paths:
-    - ".github/workflows/publish_latest.yaml"
+version: 2.1
 jobs:
-  push_to_registry:
-    name: Push Docker image to GitHub Packages
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out the repo
-      uses: actions/checkout@v2
-    - name: Push to GitHub Packages
-      uses: docker/build-push-action@v1
-      with:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-        registry: docker.pkg.github.com
-        repository: harrystech/tallboy-ci-docker
-        # When code is merged to main branch, this updates "tallboy-ci-docker:latest".
-        tags: latest
+  push_to_artifactory:
+    - run:
+        name: Push Image to Artifactory
+        command: |
+          # Docker login
+          echo $ARTIFACTORY_RW_PASSWORD | docker login harrys-local-docker.jfrog.io -u $ARTIFACTORY_RW_USERNAME --password-stdin
+          export TARGET_IMAGE="harrys-local-docker.jfrog.io/<<parameters.tag_name>>:${CIRCLE_SHA1}"
+          docker tag <<parameters.tag_name>>:latest ${TARGET_IMAGE}
+          docker push ${TARGET_IMAGE}
+
+workflows:
+   version: 2
+   build_docker_image:
+     jobs:
+       - push_to_artifactory:
+          context:
+            - sre-global
