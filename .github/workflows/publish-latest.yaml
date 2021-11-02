@@ -1,11 +1,19 @@
 version: 2.1
 jobs:
-  build:
-    docker:
-      - image: alpine:3.7
-    steps:
-      - run:
-          name: The First Step
-          command: |
-            echo 'Hello World!'
-            echo 'This is the delivery pipeline'
+  push_to_artifactory:
+    - run:
+        name: Push Image to Artifactory
+        command: |
+          # Docker login
+          echo $ARTIFACTORY_RW_PASSWORD | docker login harrys-local-docker.jfrog.io -u $ARTIFACTORY_RW_USERNAME --password-stdin
+          export TARGET_IMAGE="harrys-local-docker.jfrog.io/<<parameters.tag_name>>:${CIRCLE_SHA1}"
+          docker tag <<parameters.tag_name>>:latest ${TARGET_IMAGE}
+          docker push ${TARGET_IMAGE}
+
+workflows:
+   version: 2
+   build_docker_image:
+     jobs:
+       - push_to_artifactory:
+          context:
+            - sre-global
