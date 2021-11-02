@@ -1,23 +1,11 @@
-name: Publish Docker image
-on:
-  push:
-    branches:
-    - master
-    paths:
-    - ".github/workflows/publish_latest.yaml"
+version: 2.1
 jobs:
-  push_to_registry:
-    name: Push Docker image to GitHub Packages
-    runs-on: ubuntu-latest
+  build:
+    docker:
+      - image: alpine:3.7
     steps:
-    - name: Check out the repo
-      uses: actions/checkout@v2
-    - name: Push to GitHub Packages
-      uses: docker/build-push-action@v1
-      with:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-        registry: docker.pkg.github.com
-        repository: harrystech/tallboy-ci-docker
-        # When code is merged to main branch, this updates "tallboy-ci-docker:latest".
-        tags: latest
+      - run:
+          name: The First Step
+          command: |
+            echo 'Hello World!'
+            echo 'This is the delivery pipeline'
